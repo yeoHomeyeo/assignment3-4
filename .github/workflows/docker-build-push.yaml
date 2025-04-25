@@ -1,12 +1,23 @@
-name: Build and Push Docker Image to ECR and Deploy to ECS
+name: Build, Push to ECR, and Deploy to ECS
 
 on:
   push:
     branches: [main]
 
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: cy-flask-private-repository
+  ECS_CLUSTER: cy-cluster
+  ECS_SERVICE: cy-flask-service
+  CONTAINER_NAME: flask-app
+
 jobs:
-  build-push-deploy:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,47 +27,39 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 # Ensure this matches your ECR and ECS region
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and tag Docker image
-        id: build-image
+      - name: Build, tag, and push Docker image
+        id: build-push
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: cy-flask-private-repository
-          IMAGE_TAG_LATEST: latest
-          IMAGE_TAG_SHA: ${{ github.sha }} # Accessing the GitHub commit SHA
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA .
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST" >> $GITHUB_OUTPUT
-          echo "image_sha=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA" >> $GITHUB_OUTPUT
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Push Docker image to ECR
+      - name: Download task definition
         run: |
-          docker push ${{ steps.build-image.outputs.image }}
-          docker push ${{ steps.build-image.outputs.image_sha }}
+          aws ecs describe-task-definition --task-definition cy-flask-ecs-taskdef \
+            --query 'taskDefinition' > task-definition.json
 
-      - name: Output image URI
-        run: |
-          echo "ECR Image URI (latest): ${{ steps.build-image.outputs.image }}"
-          echo "ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}"
-
-      - name: Update ECS Task Definition
-        id: update-task-definition
-        uses: aws-actions/amazon-ecs-task-definition@v1
-        with:
-          task-definition: cy-flask-ecs-taskdef 
-          container-name: flask-app # Replace with the name of your container in the task definition
-          image: ${{ steps.build-image.outputs.image_sha }}
-
-      - name: Deploy to Amazon ECS
-        id: deploy-ecs
+      - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: ${{ steps.update-task-definition.outputs.task-definition }}
-          service: cy-flask-service # Replace with the name of your ECS service
-          cluster: cy-cluster
+          task-definition: task-definition.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-push.outputs.image }}
           wait-for-service-stability: true
+
+      - name: Verify deployment
+        run: |
+          echo "Successfully deployed ${{ steps.build-push.outputs.image }} to ECS"
+          echo "Service: ${{ env.ECS_SERVICE }}"
+          echo "Cluster: ${{ env.ECS_CLUSTER }}"
