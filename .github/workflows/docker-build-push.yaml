@@ -44,7 +44,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA
 
-      - name: Output image URI
+      - name: Output image URI (latest)
         run: echo "ECR Image URI (latest): ${{ steps.build-image.outputs.image }}"
       - name: Output image URI (SHA)
-        run: echo "ECR Image URI (SHA): $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.build-image.outputs.image_sha }}"
+        run: echo "ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}"
