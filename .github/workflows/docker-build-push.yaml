@@ -53,8 +53,8 @@ jobs:
         id: update-task-definition
         uses: aws-actions/amazon-ecs-task-definition
         with:
-          task-definition: cy-flask-ecs-taskdef # Referencing your existing task definition name (without .json)
-          container-name: cy-flask-app # Replace with the name of your container in the task definition
+          task-definition: cy-flask-ecs-taskdef 
+          container-name: flask-app # Replace with the name of your container in the task definition
           image: ${{ steps.build-image.outputs.image_sha }}
 
       - name: Deploy to Amazon ECS
