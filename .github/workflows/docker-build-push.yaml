@@ -51,7 +51,7 @@ jobs:
 
       - name: Update ECS Task Definition
         id: update-task-definition
-        uses: aws-actions/amazon-ecs-task-definition@v2
+        uses: aws-actions/amazon-ecs-task-definition
         with:
           task-definition: cy-flask-ecs-taskdef # Referencing your existing task definition name (without .json)
           container-name: cy-flask-app # Replace with the name of your container in the task definition
@@ -59,7 +59,7 @@ jobs:
 
       - name: Deploy to Amazon ECS
         id: deploy-ecs
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        uses: aws-actions/amazon-ecs-deploy-task-definition
         with:
           task-definition: ${{ steps.update-task-definition.outputs.task-definition }}
           service: cy-flask-service # Replace with the name of your ECS service
