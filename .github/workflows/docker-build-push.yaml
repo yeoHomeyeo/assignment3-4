@@ -1,11 +1,11 @@
-name: Build and Push Docker Image to ECR
+name: Build and Push Docker Image to ECR and Deploy to ECS
 
 on:
   push:
     branches: [main]
 
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -16,7 +16,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-1 # Ensure this matches your ECR and ECS region
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -44,7 +44,23 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA
 
-      - name: Output image URI (latest)
-        run: echo 'ECR Image URI (latest): ${{ steps.build-image.outputs.image }}'
-      - name: Output image URI (SHA)
-        run: echo 'ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}'
+      - name: Output image URI
+        run: echo "ECR Image URI (latest): ${{ steps.build-image.outputs.image }}"
+        echo "ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}"
+
+      - name: Update ECS Task Definition
+        id: update-task-definition
+        uses: aws-actions/amazon-ecs-task-definition@v1
+        with:
+          task-definition: cy-flask-ecs-taskdef # Referencing your existing task definition name (without .json)
+          container-name: cy-flask-app # Replace with the name of your container in the task definition
+          image: ${{ steps.build-image.outputs.image_sha }}
+
+      - name: Deploy to Amazon ECS
+        id: deploy-ecs
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.update-task-definition.outputs.task-definition }}
+          service: cy-flask-service # Replace with the name of your ECS service
+          cluster: cy-cluster
+          wait-for-service-stability: true
