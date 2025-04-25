@@ -15,3 +15,4 @@ Code to add github.sha
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 ```
 
+![](confirm-deployment.png)
