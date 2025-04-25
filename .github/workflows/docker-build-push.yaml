@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -31,18 +31,13 @@ jobs:
           IMAGE_TAG_SHA: ${{ github.sha }} # Accessing the GitHub commit SHA
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA .
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST"
-          echo "::set-output name=image_sha::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST" >> $GITHUB_OUTPUT
+          echo "image_sha=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA" >> $GITHUB_OUTPUT
 
       - name: Push Docker image to ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: cy-flask-private-repository
-          IMAGE_TAG_LATEST: latest
-          IMAGE_TAG_SHA: ${{ steps.build-image.outputs.image_sha }}
         run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_LATEST
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA
+          docker push ${{ steps.build-image.outputs.image }}
+          docker push ${{ steps.build-image.outputs.image_sha }}
 
       - name: Output image URI
         run: |
@@ -51,7 +46,7 @@ jobs:
 
       - name: Update ECS Task Definition
         id: update-task-definition
-        uses: aws-actions/amazon-ecs-task-definition@v4
+        uses: aws-actions/amazon-ecs-task-definition@v1
         with:
           task-definition: cy-flask-ecs-taskdef 
           container-name: flask-app # Replace with the name of your container in the task definition
@@ -59,7 +54,7 @@ jobs:
 
       - name: Deploy to Amazon ECS
         id: deploy-ecs
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v4
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.update-task-definition.outputs.task-definition }}
           service: cy-flask-service # Replace with the name of your ECS service
