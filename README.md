@@ -16,3 +16,5 @@ Code to add github.sha
 ```
 
 ![](confirm-deployment.png)
+
+![](dockerimage-with-sha-tags.png)
