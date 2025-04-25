@@ -45,8 +45,9 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA
 
       - name: Output image URI
-        run: echo "ECR Image URI (latest): ${{ steps.build-image.outputs.image }}"
-        echo "ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}"
+        run: 
+          echo "ECR Image URI (latest): ${{ steps.build-image.outputs.image }}"
+          echo "ECR Image URI (SHA): ${{ steps.build-image.outputs.image_sha }}"
 
       - name: Update ECS Task Definition
         id: update-task-definition
