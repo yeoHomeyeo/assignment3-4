@@ -8,7 +8,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: cy-flask-private-repository
   ECS_CLUSTER: cy-cluster
-  ECS_SERVICE: cy-flask-service
+  ECS_SERVICE: cy-flask-ecs-taskdef-service-zvbe4vsa
   TASK_DEFINITION: cy-flask-ecs-taskdef
 
 jobs:
